@@ -1,6 +1,7 @@
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select
 from ..base import Session
+from ..exceptions import DatabaseError, EntityNotFoundError
 from ..models import Material
 
 
@@ -19,7 +20,16 @@ class MaterialRepository:
             return new_material
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise Exception(f'Error creating the material in the DB: {e}')
+            raise DatabaseError(f'Error creating the material in the DB: {e}')
+
+    def get_material_by_id(self, id: int):
+        try:
+            material = self.session.get(Material, id)
+            if not material:
+                raise EntityNotFoundError(f'Material with ID {id} was not found')
+            return material
+        except SQLAlchemyError as e:
+            raise DatabaseError(f'Error retrieving the material with ID {id}: {e}')
 
     def get_all_materials(self):
         try:
@@ -28,13 +38,13 @@ class MaterialRepository:
             ).scalars().all()
             return materials
         except SQLAlchemyError as e:
-            raise Exception(f'Error retrieving materials from the DB: {e}')
+            raise DatabaseError(f'Error retrieving materials from the DB: {e}')
 
     def update_material(self, id: int, name: str, description: str):
         try:
             material = self.session.get(Material, id)
             if not material:
-                raise Exception(f'Material with ID {id} was not found')
+                raise EntityNotFoundError(f'Material with ID {id} was not found')
 
             material.name = name
             material.description = description
@@ -42,19 +52,19 @@ class MaterialRepository:
             return material
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise Exception(f'Error updating the material in the DB: {e}')
+            raise DatabaseError(f'Error updating the material in the DB: {e}')
 
     def remove_material(self, id: int):
         try:
             material = self.session.get(Material, id)
             if not material:
-                raise Exception(f'Material with ID {id} was not found')
+                raise EntityNotFoundError(f'Material with ID {id} was not found')
 
             self.session.delete(material)
             self.session.commit()
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise Exception(f'Error removing the material from the DB: {e}')
+            raise DatabaseError(f'Error removing the material from the DB: {e}')
 
     def close_session(self):
         self.session.close()
